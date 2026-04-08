@@ -42,14 +42,28 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UCameraComponent* CameraComp;
 
-	FVector MoveInput = FVector(0, 0, 0);
-	FVector LookInput = FVector(0, 0, 0);
+	FVector MoveInput;
+	FVector LookInput;
+
+
+	UPROPERTY(EditAnywhere, Category = "DroneSettings")
+	float MoveSpeed;
+
+	UPROPERTY(EditAnywhere, Category = "DroneSettings")
+	float RotationSpeed;
+
 
 	UFUNCTION()
 	void Move(const FInputActionValue& Value);
 
 	UFUNCTION()
 	void Look(const FInputActionValue& Value);
+
+	float Accumulator = 0.0f;
+
+	const float TimeStep = 1.0f / 60.0f; //60fps
+
+	void CustomTick(float FixedDeltaTime);//Custom Tick
 
 public:	
 	// Called every frame

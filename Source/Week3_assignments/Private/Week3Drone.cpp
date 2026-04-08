@@ -36,6 +36,12 @@ AWeek3Drone::AWeek3Drone()
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp, USpringArmComponent::SocketName); 
 	CameraComp->bUsePawnControlRotation = false;
+
+	MoveInput = FVector(0, 0, 0);
+	LookInput = FVector(0, 0, 0);
+
+	MoveSpeed = 500.0f;
+	RotationSpeed = 100.0f;
 }
 
 // Called when the game starts or when spawned
@@ -44,10 +50,26 @@ void AWeek3Drone::BeginPlay()
 	Super::BeginPlay();
 }
 
+
 // Called every frame
 void AWeek3Drone::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	Accumulator += DeltaTime;
+
+	while (Accumulator >= TimeStep) 
+	{
+		CustomTick(TimeStep);
+
+		Accumulator -= TimeStep;
+	}
+
+}
+
+
+void AWeek3Drone::CustomTick(float FixedDeltaTime)
+{
 
 }
 
@@ -68,6 +90,13 @@ void AWeek3Drone::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 					this,
 					&AWeek3Drone::Move
 				);
+
+				EnhancedInput->BindAction(
+					PlayerController->MoveAction,
+					ETriggerEvent::Completed,
+					this,
+					&AWeek3Drone::Move
+				);
 			}
 
 			if (PlayerController->LookAction) 
@@ -75,6 +104,13 @@ void AWeek3Drone::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 				EnhancedInput->BindAction(
 					PlayerController->LookAction,
 					ETriggerEvent::Triggered,
+					this,
+					&AWeek3Drone::Look
+				);
+
+				EnhancedInput->BindAction(
+					PlayerController->LookAction,
+					ETriggerEvent::Completed,
 					this,
 					&AWeek3Drone::Look
 				);
@@ -86,8 +122,10 @@ void AWeek3Drone::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 
 void AWeek3Drone::Move(const FInputActionValue& Value)
 {
+	MoveInput = Value.Get<FVector>();
 }
 
 void AWeek3Drone::Look(const FInputActionValue& Value)
 {
+	LookInput = Value.Get<FVector>();
 }
