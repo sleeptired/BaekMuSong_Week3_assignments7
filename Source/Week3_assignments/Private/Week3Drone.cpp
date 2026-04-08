@@ -5,7 +5,10 @@
 #include "Components/SphereComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Camera/CameraComponent.h"
+#include "EnhancedInputComponent.h"
+#include "Week3DroneController.h"
 
 // Sets default values
 AWeek3Drone::AWeek3Drone()
@@ -33,14 +36,12 @@ AWeek3Drone::AWeek3Drone()
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp, USpringArmComponent::SocketName); 
 	CameraComp->bUsePawnControlRotation = false;
-	//
 }
 
 // Called when the game starts or when spawned
 void AWeek3Drone::BeginPlay()
 {
 	Super::BeginPlay();
-	
 }
 
 // Called every frame
@@ -55,5 +56,38 @@ void AWeek3Drone::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+	if (UEnhancedInputComponent* EnhancedInput = Cast<UEnhancedInputComponent>(PlayerInputComponent)) 
+	{
+		if (AWeek3DroneController* PlayerController = Cast<AWeek3DroneController>(GetController()))
+		{
+			if (PlayerController->MoveAction) 
+			{
+				EnhancedInput->BindAction(
+					PlayerController->MoveAction,
+					ETriggerEvent::Triggered,
+					this,
+					&AWeek3Drone::Move
+				);
+			}
+
+			if (PlayerController->LookAction) 
+			{
+				EnhancedInput->BindAction(
+					PlayerController->LookAction,
+					ETriggerEvent::Triggered,
+					this,
+					&AWeek3Drone::Look
+				);
+			}
+		}
+	}
+
 }
 
+void AWeek3Drone::Move(const FInputActionValue& Value)
+{
+}
+
+void AWeek3Drone::Look(const FInputActionValue& Value)
+{
+}
