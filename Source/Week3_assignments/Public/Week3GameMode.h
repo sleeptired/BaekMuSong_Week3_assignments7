@@ -13,5 +13,6 @@ UCLASS()
 class WEEK3_ASSIGNMENTS_API AWeek3GameMode : public AGameMode
 {
 	GENERATED_BODY()
-	
+public:
+	AWeek3GameMode();
 };
