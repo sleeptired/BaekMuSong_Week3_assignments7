@@ -70,8 +70,12 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "DroneSettings")
 	float Gravity; 
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "DroneSettings|Debug")
 	float FallSpeed;
 
+	float ShiftSpeed;
+
+	float UpSpeed;
 
 public:	
 	// Called every frame

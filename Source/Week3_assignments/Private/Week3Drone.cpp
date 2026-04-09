@@ -41,11 +41,18 @@ AWeek3Drone::AWeek3Drone()
 	MoveInput = FVector(0, 0, 0);
 	LookInput = FVector(0, 0, 0);
 
-	MoveSpeed = 500.0f;
+	MoveSpeed = 1000.0f;
 	RotationSpeed = 100.0f;
 	bIsGrounded = false;
 
 	SphereComp->SetCollisionProfileName(TEXT("Pawn"));//충돌처리 예방
+
+	Gravity = -980.0f;
+	FallSpeed = 0.0f;
+
+	ShiftSpeed = 1000.0f;
+	UpSpeed = 2500.0f;
+
 }
 
 // Called when the game starts or when spawned
@@ -108,31 +115,72 @@ void AWeek3Drone::CustomTick(float FixedDeltaTime)
 
 	//중력 상태 구현
 
+	float ZInput = MoveInput.Z;
+
 	//착지 상태이고 위로 안움직일 때 (Space)
-	//if (bIsGrounded && MoveInput.Z <= 0.0f)
-	//{
-	//	FallSpeed = 0.0f; // 착지 순간 낙하 속도 0
-	//}
-	//else
-	//{ 
-	//	//공중에서는 항상 중력이 누적
-	//	FallSpeed += Gravity * FixedDeltaTime;
-	//
-	//	// 공기 저항 중력때문에 빠르게 위로 못올라가는 로직
-	//	// (MoveSpeed보다 작게 제한해야, 스페이스바를 눌렀을 때 중력을 이기고 날 수 있음)
-	//	FallSpeed = FMath::Clamp(FallSpeed, -200.0f, 0.0f);
-	//}
-
-	// 날고 있을 때 이동속도 제한
-
-
-
-
-	if (!MoveInput.IsNearlyZero()) 
+	if (bIsGrounded && ZInput <= 0.0f)
 	{
-		FVector DeltaLocation = MoveInput * MoveSpeed * FixedDeltaTime;
-		AddActorLocalOffset(DeltaLocation, true);
+		FallSpeed = 0.0f; // 착지 순간 낙하 속도 0
 	}
+	else
+	{ 
+		FallSpeed += Gravity * FixedDeltaTime;
+
+		if (ZInput > 0.0f) // 스페이스바 (상승)
+		{
+			// 중력을 솟구칠 수 있는 힘 부여
+			FallSpeed += UpSpeed * FixedDeltaTime;
+		}
+		else if (ZInput < 0.0f) // 쉬프트 (하강)
+		{
+			// 밑으로 꽂히는 힘
+			FallSpeed -= ShiftSpeed * FixedDeltaTime;
+		}
+		else 
+		{
+			FallSpeed += (-Gravity) * FixedDeltaTime; // 중력 상쇄
+			float TargetHoverSpeed = -20.0f; // 아주 천천히 떨어지는 목표 속도
+
+			// FInterpTo로 목표 하강 속도에 맞춰 부드럽게 감속
+			FallSpeed = FMath::FInterpTo(FallSpeed, TargetHoverSpeed, FixedDeltaTime, 3.0f);
+		}
+	}
+
+	//중력적용 부분 
+	FVector GravityMove = FVector(0.0f, 0.0f, FallSpeed * FixedDeltaTime);
+	AddActorWorldOffset(GravityMove, true);
+	//
+	
+	// 날고 있을 때 이동속도 제한
+	FVector LocalInput = MoveInput;
+	LocalInput.Z = 0.0f;
+
+	if (!LocalInput.IsNearlyZero())
+	{
+		if (bIsGrounded)//땅바닥에서 걸어가기 위한 함수
+		{
+			// 드론이 쳐다보는 방향을 월드 방향으로 변환
+			FVector WorldDir = GetActorRotation().RotateVector(LocalInput);
+			// 위/아래 값을 지워버림 바닥과 평행하게 함
+			WorldDir.Z = 0.0f;
+
+			// 평행 방향으로 이동
+			if (!WorldDir.IsNearlyZero())
+			{
+				WorldDir.Normalize();
+				FVector DeltaLocation = WorldDir * MoveSpeed * FixedDeltaTime;
+				AddActorWorldOffset(DeltaLocation, true);
+			}
+		}
+		else
+		{
+			// 에어 컨트롤: 속도 40% 제한
+			float AirSpeed = MoveSpeed * 0.4f;
+			FVector DeltaLocation = LocalInput * AirSpeed * FixedDeltaTime;
+			AddActorLocalOffset(DeltaLocation, true);
+		}
+	}
+
 	LookInput.X = 0.0f;
 	LookInput.Y = 0.0f;
 }
