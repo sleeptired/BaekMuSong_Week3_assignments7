@@ -65,14 +65,13 @@ protected:
 
 	void CustomTick(float FixedDeltaTime);//Custom Tick
 
+	bool bIsGrounded;
 
 	UPROPERTY(EditAnywhere, Category = "DroneSettings")
 	float Gravity; 
 
-
 	float FallSpeed;
 
-	bool bIsGrounded = false;
 
 public:	
 	// Called every frame
