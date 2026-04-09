@@ -70,7 +70,23 @@ void AWeek3Drone::Tick(float DeltaTime)
 
 void AWeek3Drone::CustomTick(float FixedDeltaTime)
 {
+	if (!MoveInput.IsNearlyZero()) 
+	{
+		FVector DeltaLocation = MoveInput * MoveSpeed * FixedDeltaTime;
+		AddActorLocalOffset(DeltaLocation, true);
+	}
 
+	if (!LookInput.IsNearlyZero()) 
+	{
+		FRotator NewRotation = FRotator(
+			LookInput.Y * RotationSpeed * FixedDeltaTime, 
+			LookInput.X * RotationSpeed * FixedDeltaTime, 
+			LookInput.Z * RotationSpeed * FixedDeltaTime
+		);
+		AddActorLocalRotation(NewRotation, true);
+	}
+	LookInput.X = 0.0f;
+	LookInput.Y = 0.0f;
 }
 
 // Called to bind functionality to input
@@ -117,7 +133,6 @@ void AWeek3Drone::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 			}
 		}
 	}
-
 }
 
 void AWeek3Drone::Move(const FInputActionValue& Value)
