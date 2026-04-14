@@ -81,105 +81,11 @@ void AWeek3Drone::Tick(float DeltaTime)
 
 void AWeek3Drone::CustomTick(float FixedDeltaTime)
 {
-	if (!LookInput.IsNearlyZero())
-	{
-		FRotator NewRotation = FRotator(
-			LookInput.Y * RotationSpeed * FixedDeltaTime,
-			LookInput.X * RotationSpeed * FixedDeltaTime,
-			LookInput.Z * RotationSpeed * FixedDeltaTime
-		);
-		AddActorLocalRotation(NewRotation, true);
-	}
 
-	//Line Trace
-	FVector StartLocation = GetActorLocation();//현재 드론의 중심점
-	float SphereRadius = SphereComp->GetScaledSphereRadius(); //sphereComp의 반지름
-	FVector EndLocation = StartLocation + FVector(0.0f, 0.0f, -(SphereRadius + 5.0f));//드론의 중심점 기준으로 sphereComp의 반지름의 10을 추가해서 레이저를 쏜다
-
-	FHitResult HitResult;
-	FCollisionQueryParams TraceParams;
-	TraceParams.AddIgnoredActor(this);//자기 자신은 무시
-
-	bIsGrounded = GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECC_Visibility, TraceParams);//LineTrace 쏘기 충돌은 world기준으로 모든 물체와 확인하는거라서 world좌표 사용
-
-	//디버그 모드
-	FColor LineColor = bIsGrounded ? FColor::Green : FColor::Red;
-	DrawDebugLine(GetWorld(), StartLocation, EndLocation, LineColor, false, -1.0f, 0, 2.0f);
-
-	if (bIsGrounded)
-	{
-		DrawDebugPoint(GetWorld(), HitResult.ImpactPoint, 10.0f, FColor::Yellow, false, -1.0f);
-	}
-	//
-
-
-	//중력 상태 구현
-
-	float ZInput = MoveInput.Z;
-
-	//착지 상태이고 위로 안움직일 때 (Space)
-	if (bIsGrounded && ZInput <= 0.0f)
-	{
-		FallSpeed = 0.0f; // 착지 순간 낙하 속도 0
-	}
-	else
-	{ 
-		FallSpeed += Gravity * FixedDeltaTime;
-
-		if (ZInput > 0.0f) // 스페이스바 (상승)
-		{
-			// 중력을 솟구칠 수 있는 힘 부여
-			FallSpeed += UpSpeed * FixedDeltaTime;
-		}
-		else if (ZInput < 0.0f) // 쉬프트 (하강)
-		{
-			// 밑으로 꽂히는 힘
-			FallSpeed -= ShiftSpeed * FixedDeltaTime;
-		}
-		else 
-		{
-			FallSpeed += (-Gravity) * FixedDeltaTime; // 중력 상쇄
-			float TargetHoverSpeed = -20.0f; // 아주 천천히 떨어지는 목표 속도
-
-			// FInterpTo로 목표 하강 속도에 맞춰 부드럽게 감속
-			FallSpeed = FMath::FInterpTo(FallSpeed, TargetHoverSpeed, FixedDeltaTime, 3.0f);
-		}
-	}
-
-	//중력적용 부분 
-	FVector GravityMove = FVector(0.0f, 0.0f, FallSpeed * FixedDeltaTime);
-	AddActorWorldOffset(GravityMove, true);
-	//
-	
-	// 날고 있을 때 이동속도 제한
-	FVector LocalInput = MoveInput;
-	LocalInput.Z = 0.0f;
-
-	if (!LocalInput.IsNearlyZero())
-	{
-		if (bIsGrounded)//땅바닥에서 걸어가기 위한 함수
-		{
-			// 드론이 쳐다보는 방향을 월드 방향으로 변환
-			FVector WorldDir = GetActorRotation().RotateVector(LocalInput);
-			// 위/아래 값을 지워버림 바닥과 평행하게 함
-			WorldDir.Z = 0.0f;
-
-			// 평행 방향으로 이동
-			if (!WorldDir.IsNearlyZero())
-			{
-				WorldDir.Normalize();
-				FVector DeltaLocation = WorldDir * MoveSpeed * FixedDeltaTime;
-				AddActorWorldOffset(DeltaLocation, true);
-			}
-		}
-		else
-		{
-			// 에어 컨트롤: 속도 40% 제한
-			float AirSpeed = MoveSpeed * 0.4f;
-			FVector DeltaLocation = LocalInput * AirSpeed * FixedDeltaTime;
-			AddActorLocalOffset(DeltaLocation, true);
-		}
-	}
+	UpdateRotation(FixedDeltaTime);               // 1. 회전 업데이트
+	UpdateGroundDetection();                      // 2. 지면 감지
+	UpdateGravityAndHovering(FixedDeltaTime);     // 3. 중력 및 호버링
+	UpdateMovement(FixedDeltaTime);               // 4. 전후좌우 이동 업데이트
 
 	LookInput.X = 0.0f;
 	LookInput.Y = 0.0f;
@@ -239,4 +145,103 @@ void AWeek3Drone::Move(const FInputActionValue& Value)
 void AWeek3Drone::Look(const FInputActionValue& Value)
 {
 	LookInput = Value.Get<FVector>();
+}
+
+
+void AWeek3Drone::UpdateRotation(float DeltaTime)
+{
+	if (!LookInput.IsNearlyZero())
+	{
+		FRotator NewRotation = FRotator(
+			LookInput.Y * RotationSpeed * DeltaTime,
+			LookInput.X * RotationSpeed * DeltaTime,
+			LookInput.Z * RotationSpeed * DeltaTime
+		);
+		AddActorLocalRotation(NewRotation, true);
+	}
+}
+
+void AWeek3Drone::UpdateGroundDetection()
+{
+	FVector StartLocation = GetActorLocation();
+	float SphereRadius = SphereComp->GetScaledSphereRadius();
+	FVector EndLocation = StartLocation + FVector(0.0f, 0.0f, -(SphereRadius + 5.0f));
+
+	FHitResult HitResult;
+	FCollisionQueryParams TraceParams;
+	TraceParams.AddIgnoredActor(this);
+
+	bIsGrounded = GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECC_Visibility, TraceParams);
+
+	// 디버그 드로잉
+	FColor LineColor = bIsGrounded ? FColor::Green : FColor::Red;
+	DrawDebugLine(GetWorld(), StartLocation, EndLocation, LineColor, false, -1.0f, 0, 2.0f);
+
+	if (bIsGrounded)
+	{
+		DrawDebugPoint(GetWorld(), HitResult.ImpactPoint, 10.0f, FColor::Yellow, false, -1.0f);
+	}
+}
+
+void AWeek3Drone::UpdateGravityAndHovering(float DeltaTime)
+{
+	float ZInput = MoveInput.Z;
+
+	if (bIsGrounded && ZInput <= 0.0f)
+	{
+		FallSpeed = 0.0f; // 착지 순간 낙하 속도 초기화
+	}
+	else
+	{
+		FallSpeed += Gravity * DeltaTime;
+
+		if (ZInput > 0.0f)
+		{
+			FallSpeed += UpSpeed * DeltaTime; // 상승
+		}
+		else if (ZInput < 0.0f)
+		{
+			FallSpeed -= ShiftSpeed * DeltaTime; // 하강
+		}
+		else
+		{
+			// 호버링 유지
+			FallSpeed += (-Gravity) * DeltaTime;
+			float TargetHoverSpeed = -20.0f;
+			FallSpeed = FMath::FInterpTo(FallSpeed, TargetHoverSpeed, DeltaTime, 3.0f);
+		}
+	}
+
+	FVector GravityMove = FVector(0.0f, 0.0f, FallSpeed * DeltaTime);
+	AddActorWorldOffset(GravityMove, true);
+}
+
+void AWeek3Drone::UpdateMovement(float DeltaTime)
+{
+	FVector LocalInput = MoveInput;
+	LocalInput.Z = 0.0f; // 이동 시 상하 입력 무시
+
+	if (!LocalInput.IsNearlyZero())
+	{
+		if (bIsGrounded)
+		{
+			// 지상 이동 (파고들기 방지)
+			FVector WorldDir = GetActorRotation().RotateVector(LocalInput);
+			WorldDir.Z = 0.0f;
+
+			if (!WorldDir.IsNearlyZero())
+			{
+				WorldDir.Normalize();
+				FVector DeltaLocation = WorldDir * MoveSpeed * DeltaTime;
+				AddActorWorldOffset(DeltaLocation, true);
+			}
+		}
+		else
+		{
+			// 공중 에어 컨트롤 (속도 40%)
+			float AirSpeed = MoveSpeed * 0.4f;
+			FVector DeltaLocation = LocalInput * AirSpeed * DeltaTime;
+			AddActorLocalOffset(DeltaLocation, true);
+		}
+	}
 }

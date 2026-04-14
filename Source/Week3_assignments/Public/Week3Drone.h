@@ -67,6 +67,19 @@ protected:
 
 	bool bIsGrounded;
 
+	UFUNCTION()
+	void UpdateRotation(float DeltaTime);
+
+	UFUNCTION()
+	void UpdateGroundDetection();
+
+	UFUNCTION()
+	void UpdateGravityAndHovering(float DeltaTime);
+
+	UFUNCTION()
+	void UpdateMovement(float DeltaTime);
+
+
 	UPROPERTY(EditAnywhere, Category = "DroneSettings")
 	float Gravity; 
 
