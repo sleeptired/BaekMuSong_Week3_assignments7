@@ -79,6 +79,8 @@ protected:
 	UFUNCTION()
 	void UpdateMovement(float DeltaTime);
 
+	//UFUNCTION()
+	//void UpdateBanking(float DeltaTime); 나중에 추가예정
 
 	UPROPERTY(EditAnywhere, Category = "DroneSettings")
 	float Gravity; 
@@ -89,6 +91,8 @@ protected:
 	float ShiftSpeed;
 
 	float UpSpeed;
+
+	FRotator BaseMeshRotation;
 
 public:	
 	// Called every frame

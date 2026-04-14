@@ -53,6 +53,8 @@ AWeek3Drone::AWeek3Drone()
 	ShiftSpeed = 1000.0f;
 	UpSpeed = 2500.0f;
 
+	BaseMeshRotation = StaticMeshComp->GetRelativeRotation();
+
 }
 
 // Called when the game starts or when spawned
@@ -86,6 +88,7 @@ void AWeek3Drone::CustomTick(float FixedDeltaTime)
 	UpdateGroundDetection();                      // 2. 지면 감지
 	UpdateGravityAndHovering(FixedDeltaTime);     // 3. 중력 및 호버링
 	UpdateMovement(FixedDeltaTime);               // 4. 전후좌우 이동 업데이트
+	//UpdateBanking(FixedDeltaTime); 모션 업데이트 나중에 추가예정
 
 	LookInput.X = 0.0f;
 	LookInput.Y = 0.0f;
